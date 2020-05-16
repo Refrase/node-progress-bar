@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" href="./style.css" />
+        <title>Progress bar</title>
+    </head>
+    <body>
+        <script>
+            fetch("http://localhost:8080")
+                .then((response) => {
+                    let contentLength = response.headers.get("Content-Length");
+                    const reader = response.body.getReader();
+
+                    const progress = document.getElementById("progress");
+
+                    let receivedLength = 0;
+                    let chunks = [];
+
+                    function processChunksRecursively({ done, value }) {
+                        if (done) {
+                            progress.style.transform = "scale3d(1, 1, 1)";
+
+                            let chunksAll = new Uint8Array(receivedLength);
+                            let position = 0;
+
+                            for (let chunk of chunks) {
+                                chunksAll.set(chunk, position);
+                                position += chunk.length;
+                            }
+
+                            let result = new TextDecoder("utf-8").decode(
+                                chunksAll
+                            );
+
+                            return JSON.parse(result);
+                        }
+
+                        chunks.push(value);
+                        receivedLength += value.length;
+
+                        progress.style.transform = `scale3d(${
+                            receivedLength / contentLength
+                        }, 1, 1)`;
+
+                        console.log(
+                            `Received ${receivedLength} of ${contentLength} bytes`
+                        );
+
+                        return reader.read().then(processChunksRecursively);
+                    }
+
+                    return reader
+                        .read()
+                        .then(processChunksRecursively)
+                        .catch((error) => console.log(error, "error"));
+                })
+                .then((data) => {
+                    data.map((movie) => {
+                        const element = document.createElement("p");
+                        element.innerText = movie.title;
+                        document.body.appendChild(element);
+                    });
+                });
+        </script>
+
+        <div id="progressBar">
+            <div id="progress"></div>
+        </div>
+    </body>
+</html>
